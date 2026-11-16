@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
+    "build": "node scripts/sync-shared.js",
     "test": "node --test",
     "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=test/**"
   }

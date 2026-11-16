@@ -125,7 +125,10 @@ export async function serveStatic(req, res, pathname, dirs) {
   const entry = STATIC_FILES[pathname];
   if (!entry || !SAFE_METHODS.has(req.method)) throw new HttpError(404, 'No encontrado.');
   const [dir, file, contentType] = entry;
-  const content = await readFile(path.join(dirs[dir], file));
+  const content = await readFile(path.join(dirs[dir], file)).catch((err) => {
+    if (err.code !== 'ENOENT' || dir !== 'shared') throw err;
+    return readFile(path.join(dirs.public, 'shared', file));
+  });
   res.writeHead(200, {
     'content-type': contentType,
     'cache-control': 'no-cache',

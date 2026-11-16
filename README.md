@@ -55,7 +55,7 @@ Con `TELON_MODE=web` (o `node server.js --web`) Telón funciona como sitio públ
 
 Dos formas de desplegarla:
 
-- **Vercel**: `vercel.json` sirve `public/` como sitio estático y manda `/api/*` y `/shared/*` a la función `api/index.js` (la misma app en modo web). Basta importar el repositorio o ejecutar `vercel --prod`.
+- **Vercel**: `vercel.json` declara `server.js` como servicio Node; el build (`npm run build`) copia los módulos compartidos a `public/shared`. Basta importar el repositorio o ejecutar `vercel --prod`. En vivo: <https://arkaios-telon.vercel.app>
 - **Render**: `render.yaml` crea un servicio web gratuito (New → Blueprint → este repositorio). En ese plan el servicio se duerme tras un rato sin visitas y la primera carga tarda cerca de un minuto.
 
 ## Usarla desde el teléfono

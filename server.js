@@ -17,7 +17,8 @@ try {
 }
 
 const portFlag = process.argv.find((arg) => arg.startsWith('--port='))?.slice('--port='.length);
-const mode = process.env.TELON_MODE === 'web' || process.argv.includes('--web') ? 'web' : 'local';
+const isWeb = process.env.TELON_MODE === 'web' || process.argv.includes('--web') || Boolean(process.env.VERCEL);
+const mode = isWeb ? 'web' : 'local';
 const port = Number(portFlag ?? process.env.TELON_PORT ?? process.env.PORT ?? DEFAULT_PORT);
 const host = process.env.TELON_HOST ?? (mode === 'web' ? '0.0.0.0' : LOOPBACK);
 const dataDir = process.env.TELON_DATA_DIR ?? path.join(ROOT, 'data');
