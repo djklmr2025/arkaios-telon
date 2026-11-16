@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Telón — historias que se escriben contigo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#/">Telón<span class="brand-dot" aria-hidden="true"></span></a>
+      <nav aria-label="Secciones">
+        <a href="#/" data-nav="library">Biblioteca</a>
+        <a href="#/partidas" data-nav="sessions">Partidas</a>
+        <a href="#/crear" data-nav="editor">Crear</a>
+        <a href="#/ajustes" data-nav="settings">Ajustes</a>
+      </nav>
+    </header>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <main id="view" tabindex="-1"></main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "arkaios-telon",
+  "version": "0.1.0",
+  "description": "Historias interactivas con personajes de IA. Local, gratis, sin monedas ni cuentas.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=test/**"
+  }
+}

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: arkaios-telon
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/config
+    envVars:
+      - key: TELON_MODE
+        value: web
