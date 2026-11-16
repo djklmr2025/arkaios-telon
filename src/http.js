@@ -54,7 +54,31 @@ export function clientAddress(req, trustProxy) {
   return first || req.socket.remoteAddress || 'unknown';
 }
 
+function requireObject(parsed) {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new HttpError(400, 'El cuerpo de la petición debe ser un objeto.');
+  }
+  return parsed;
+}
+
+// Some hosts (Vercel) read the body before calling the handler and expose it as req.body.
+function preParsedBody(req) {
+  let body;
+  try {
+    body = req.body;
+    if (typeof body === 'string' || Buffer.isBuffer(body)) body = JSON.parse(body.toString('utf8'));
+  } catch {
+    throw new HttpError(400, 'El cuerpo de la petición no es JSON válido.');
+  }
+  if (body !== undefined && JSON.stringify(body).length > MAX_BODY_BYTES) {
+    throw new HttpError(413, 'La petición es demasiado grande.');
+  }
+  return body;
+}
+
 export async function readJsonBody(req) {
+  const preParsed = preParsedBody(req);
+  if (preParsed !== undefined) return requireObject(preParsed);
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
@@ -68,10 +92,7 @@ export async function readJsonBody(req) {
   } catch {
     throw new HttpError(400, 'El cuerpo de la petición no es JSON válido.');
   }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new HttpError(400, 'El cuerpo de la petición debe ser un objeto.');
-  }
-  return parsed;
+  return requireObject(parsed);
 }
 
 export function sendJson(res, status, payload) {

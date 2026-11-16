@@ -235,3 +235,26 @@ test('parseReplyRequest limita el tamaño del historial', () => {
   assert.throws(() => parseReplyRequest(replyBody({ messages: ['x'] })), ValidationError);
   assert.equal(parseReplyRequest(replyBody()).session.messages.length, 2);
 });
+
+test('la entrada de Vercel sirve la app en modo web y acepta cuerpos ya leídos por el host', async (t) => {
+  const { default: handler } = await import('../api/index.js');
+  const { readJsonBody } = await import('../src/http.js');
+  const server = createServer(handler);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const config = await fetch(`${base}/api/config`).then((r) => r.json());
+  const shared = await fetch(`${base}/shared/validate.js`);
+  const noKey = await fetch(`${base}/api/reply`, { method: 'POST', body: '{}' });
+
+  assert.equal(config.data.mode, 'web');
+  assert.equal(shared.status, 200);
+  assert.equal(noKey.status, 400);
+  assert.deepEqual(await readJsonBody({ body: { a: 1 } }), { a: 1 });
+  assert.deepEqual(await readJsonBody({ body: '{"a":2}' }), { a: 2 });
+  await assert.rejects(readJsonBody({ body: '{roto' }), /JSON válido/);
+  await assert.rejects(readJsonBody({ body: [1] }), /objeto/);
+  await assert.rejects(readJsonBody({ body: { big: 'x'.repeat(300 * 1024) } }), /demasiado grande/);
+  await assert.rejects(readJsonBody({ get body() { throw new Error('mal'); } }), /JSON válido/);
+});

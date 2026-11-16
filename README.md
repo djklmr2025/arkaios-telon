@@ -53,7 +53,10 @@ Con `TELON_MODE=web` (o `node server.js --web`) Telón funciona como sitio públ
 - La clave viaja en cada jugada al servidor, que la reenvía a Gemini y la olvida. El servidor solo habla con la URL fija del proveedor y limita a 30 peticiones por minuto por visitante.
 - Borrar los datos del sitio en el navegador borra las partidas.
 
-El archivo `render.yaml` despliega esta versión en Render (plan gratuito): New → Blueprint → este repositorio. En el plan gratuito el servicio se duerme tras un rato sin visitas y la primera carga tarda cerca de un minuto.
+Dos formas de desplegarla:
+
+- **Vercel**: `vercel.json` sirve `public/` como sitio estático y manda `/api/*` y `/shared/*` a la función `api/index.js` (la misma app en modo web). Basta importar el repositorio o ejecutar `vercel --prod`.
+- **Render**: `render.yaml` crea un servicio web gratuito (New → Blueprint → este repositorio). En ese plan el servicio se duerme tras un rato sin visitas y la primera carga tarda cerca de un minuto.
 
 ## Usarla desde el teléfono
 
