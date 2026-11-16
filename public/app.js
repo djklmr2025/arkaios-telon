@@ -1,3 +1,4 @@
+import { getCurrentUser, initAuth, loginWithGoogle, logout } from '/auth.js';
 import { createData } from '/data.js';
 import { h } from '/dom.js';
 import {
@@ -19,10 +20,78 @@ const SLOW_HINT = 'Escribiendo… con el motor local puede tardar uno o dos minu
 
 const view = document.getElementById('view');
 const noticeBox = document.getElementById('notice');
+const authContainer = document.getElementById('auth-bar');
 let noticeTimer = null;
 let activeStream = null;
 let data = null;
 let pendingDraft = null;
+
+function renderAuthBar(user) {
+  if (!authContainer) return;
+  if (user) {
+    const avatar = user.photoURL
+      ? h('img', { class: 'auth-avatar', src: user.photoURL, alt: user.displayName, referrerpolicy: 'no-referrer' })
+      : h('div', { class: 'auth-avatar placeholder', 'aria-hidden': 'true' }, (user.displayName || 'A').charAt(0).toUpperCase());
+
+    const logoutBtn = h(
+      'button',
+      {
+        type: 'button',
+        class: 'auth-logout-btn',
+        title: 'Cerrar sesión de Google',
+        onclick: () =>
+          guarded(async () => {
+            await logout();
+            notify('Sesión cerrada.');
+          }),
+      },
+      'Salir',
+    );
+
+    const userInfo = h(
+      'div',
+      { class: 'auth-user', title: user.email ? `${user.displayName} (${user.email})` : user.displayName },
+      avatar,
+      h('span', { class: 'auth-name' }, user.displayName),
+      logoutBtn,
+    );
+
+    authContainer.replaceChildren(userInfo);
+  } else {
+    const loginBtn = h(
+      'button',
+      {
+        type: 'button',
+        class: 'auth-login-btn',
+        onclick: () =>
+          guarded(async () => {
+            const logged = await loginWithGoogle();
+            if (logged) {
+              notify(`¡Bienvenido a Telón, ${logged.displayName}!`);
+              try {
+                const currentProfile = await data.getProfile();
+                if (!currentProfile.name) {
+                  await data.saveProfile({ ...currentProfile, name: logged.displayName });
+                }
+              } catch {
+                // best effort
+              }
+            }
+          }),
+      },
+      h(
+        'svg',
+        { class: 'google-icon', viewBox: '0 0 24 24', width: '15', height: '15', 'aria-hidden': 'true' },
+        h('path', { fill: '#4285F4', d: 'M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z' }),
+        h('path', { fill: '#34A853', d: 'M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.13C3.25 21.37 7.33 24 12 24z' }),
+        h('path', { fill: '#FBBC05', d: 'M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.13z' }),
+        h('path', { fill: '#EA4335', d: 'M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.25 2.63 1.26 6.58l4.02 3.13c.95-2.83 3.6-4.96 6.72-4.96z' }),
+      ),
+      'Entrar con Google',
+    );
+    authContainer.replaceChildren(loginBtn);
+  }
+}
 
 const picturesOn = () => imagesEnabled(data.mode);
 
@@ -390,6 +459,16 @@ async function renderCrossover() {
 }
 
 function profileSection(profile) {
+  const user = getCurrentUser();
+  const linkedAccount = user
+    ? h(
+        'p',
+        { class: 'hint status-ok' },
+        'Cuenta Arkaios conectada: ',
+        h('strong', {}, user.displayName),
+        user.email ? ` (${user.email})` : '',
+      )
+    : null;
   const save = (event) => {
     event.preventDefault();
     guarded(async () => {
@@ -402,6 +481,7 @@ function profileSection(profile) {
     'section',
     { class: 'section' },
     h('h2', {}, 'Tu protagonista'),
+    linkedAccount,
     h(
       'form',
       { onsubmit: save },
@@ -566,6 +646,7 @@ async function route() {
 }
 
 async function start() {
+  initAuth(renderAuthBar);
   try {
     data = await createData();
   } catch (err) {

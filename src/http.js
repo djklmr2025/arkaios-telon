@@ -8,12 +8,13 @@ const MAX_BODY_BYTES = 256 * 1024;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
 const CONTENT_SECURITY_POLICY =
-  `default-src 'self'; img-src 'self' data: blob: ${IMAGE_ORIGIN}; connect-src 'self' ${IMAGE_ORIGIN}; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
+  `default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; img-src 'self' data: blob: ${IMAGE_ORIGIN} https://lh3.googleusercontent.com https://*.googleusercontent.com; connect-src 'self' ${IMAGE_ORIGIN} https://*.googleapis.com https://*.firebaseapp.com; frame-src 'self' https://arkaios-world.firebaseapp.com https://accounts.google.com; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
 const SCRIPT = 'text/javascript; charset=utf-8';
 const SVG = 'image/svg+xml';
 const STATIC_FILES = Object.freeze({
   '/': ['public', 'index.html', 'text/html; charset=utf-8'],
   '/app.js': ['public', 'app.js', SCRIPT],
+  '/auth.js': ['public', 'auth.js', SCRIPT],
   '/data.js': ['public', 'data.js', SCRIPT],
   '/dom.js': ['public', 'dom.js', SCRIPT],
   '/pictures.js': ['public', 'pictures.js', SCRIPT],

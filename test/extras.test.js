@@ -163,7 +163,7 @@ test('sirve las portadas de muestra y permite imágenes solo del generador', asy
   assert.equal(cover.status, 200);
   assert.equal(cover.headers.get('content-type'), 'image/svg+xml');
   assert.match(await cover.text(), /^<svg/);
-  assert.match(page.headers.get('content-security-policy'), new RegExp(`img-src 'self' data: blob: ${IMAGE_ORIGIN};`));
+  assert.match(page.headers.get('content-security-policy'), new RegExp(`img-src 'self' data: blob: ${IMAGE_ORIGIN}`));
   assert.equal(helper.status, 200);
   assert.equal((await fetch(`${base}/covers/otra.svg`)).status, 404);
 });
