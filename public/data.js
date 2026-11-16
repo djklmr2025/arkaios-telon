@@ -65,6 +65,8 @@ export function createServerData() {
     createSession: (episodeId, mode, characterId) => api('POST', '/api/sessions', { episodeId, mode, characterId }),
     deleteSession: (id) => api('DELETE', `/api/sessions/${id}`),
     reply: (id, body, onToken, signal) => stream(`/api/sessions/${id}/messages`, body, {}, onToken, signal),
+    crossover: (firstId, secondId, onToken, signal) =>
+      stream('/api/crossover', { episodeIds: [firstId, secondId] }, {}, onToken, signal),
   };
 }
 
@@ -166,6 +168,14 @@ export function createBrowserData(config, storage = localStorage) {
     },
     async deleteSession(id) {
       box.save('sessions', sessions().filter((candidate) => candidate.id !== id));
+    },
+    async crossover(firstId, secondId, onToken, signal) {
+      const current = settings();
+      if (!current.apiKey) throw rejected('Falta tu clave de IA. Ponla en Ajustes para usar el cruce.');
+      const list = await episodes();
+      const chosen = [firstId, secondId].map((id) => ({ ...findOrFail(list, id, 'Episodio no encontrado.'), cover: '' }));
+      const request = { provider: current.provider, model: current.model, episodes: chosen };
+      return stream('/api/crossover', request, { [KEY_HEADER]: current.apiKey }, onToken, signal);
     },
     async reply(id, body, onToken, signal) {
       const current = settings();

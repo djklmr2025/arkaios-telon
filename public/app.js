@@ -1,4 +1,16 @@
 import { createData } from '/data.js';
+import { h } from '/dom.js';
+import {
+  coverEditor,
+  coverNode,
+  forgetScenes,
+  hasScene,
+  imagesEnabled,
+  requestScene,
+  sceneFigure,
+  setImagesEnabled,
+} from '/pictures.js';
+import { parseCrossoverDraft } from '/shared/crossover.js';
 
 const MAX_CHARACTERS = 6;
 const NOTICE_MS = 4000;
@@ -10,19 +22,9 @@ const noticeBox = document.getElementById('notice');
 let noticeTimer = null;
 let activeStream = null;
 let data = null;
+let pendingDraft = null;
 
-function h(tag, props = {}, ...children) {
-  const el = document.createElement(tag);
-  el.append(...children.flat().filter((child) => child !== null && child !== undefined && child !== false));
-  for (const [key, value] of Object.entries(props)) {
-    if (key === 'class') el.className = value;
-    else if (key === 'value') el.value = value;
-    else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
-    else if (value === true) el.setAttribute(key, '');
-    else if (value !== false && value !== null && value !== undefined) el.setAttribute(key, value);
-  }
-  return el;
-}
+const picturesOn = () => imagesEnabled(data.mode);
 
 function notify(message, isError = false) {
   clearTimeout(noticeTimer);
@@ -65,6 +67,7 @@ function episodeCard(episode) {
   return h(
     'article',
     { class: 'card' },
+    coverNode(episode, picturesOn()),
     episode.tone && h('span', { class: 'tag' }, episode.tone),
     h('h2', {}, episode.title),
     h('p', {}, episode.synopsis),
@@ -96,6 +99,8 @@ async function renderLibrary() {
     : h('p', { class: 'empty' }, 'No hay episodios. Crea el primero en la pestaña Crear.');
   view.replaceChildren(
     ...pageHead('Biblioteca', 'Elige un episodio y entra en escena. Aquí no hay monedas: juega cuanto quieras.'),
+    episodes.length > 1 &&
+      h('p', { class: 'toolbar' }, h('a', { class: 'button', href: '#/cruce' }, 'Cruzar dos mundos')),
     body,
   );
 }
@@ -105,6 +110,7 @@ function sessionRow(session) {
     guarded(async () => {
       if (!confirm(`¿Borrar la partida "${session.title}"?`)) return;
       await data.deleteSession(session.id);
+      forgetScenes(session.id);
       await renderSessions();
     });
   return h(
@@ -124,13 +130,24 @@ async function renderSessions() {
   view.replaceChildren(...pageHead('Partidas', 'Tus historias y charlas en curso se guardan en este equipo.'), body);
 }
 
-function messageNode(message) {
+function messageNode(message, session) {
   const kind = message.role === 'user' ? 'player' : 'story';
-  return h('div', { class: `msg ${kind}` }, paragraphs(message.text));
+  const scene = session && hasScene(session.id, message.id) && sceneFigure(session, message);
+  return h('div', { class: `msg ${kind}` }, paragraphs(message.text), scene);
 }
 
 function createStage(session) {
-  const log = h('div', { class: 'log', 'aria-live': 'polite' }, session.messages.map(messageNode));
+  const log = h(
+    'div',
+    { class: 'log', 'aria-live': 'polite' },
+    session.messages.map((message) => messageNode(message, session)),
+  );
+  let lastStory = null;
+  const remember = (message, node) => {
+    lastStory = { message, node };
+  };
+  const storyMessages = session.messages.filter((message) => message.role === 'assistant');
+  if (storyMessages.length) remember(storyMessages.at(-1), [...log.querySelectorAll('.msg.story')].at(-1));
   const input = h('textarea', {
     'aria-label': 'Tu acción o diálogo',
     placeholder: session.mode === 'chat' ? 'Escribe tu mensaje…' : '¿Qué haces o dices?',
@@ -158,7 +175,9 @@ function createStage(session) {
       };
       activeStream = new AbortController();
       const reply = await data.reply(session.id, body, showPiece, activeStream.signal);
-      bubble.replaceWith(messageNode(reply));
+      const node = messageNode(reply, session);
+      bubble.replaceWith(node);
+      remember(reply, node);
     } catch (err) {
       if (err.name === 'AbortError') return;
       if (err.rejected && playerBubble) {
@@ -187,7 +206,20 @@ function createStage(session) {
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) submit(event);
   });
-  const form = h('form', { class: 'composer', onsubmit: submit }, input, sendButton);
+  const illustrate = () =>
+    guarded(async () => {
+      if (!lastStory) throw new Error('Todavía no hay ninguna escena que ilustrar.');
+      if (lastStory.node.querySelector('.scene .cover')) throw new Error('Esta escena ya está ilustrada o en camino.');
+      lastStory.node.querySelector('.scene')?.remove();
+      const figure = requestScene(session, lastStory.message);
+      lastStory.node.append(figure);
+      figure.scrollIntoView({ block: 'end' });
+    });
+  const tools =
+    session.mode === 'episode' &&
+    picturesOn() &&
+    h('button', { type: 'button', class: 'quiet', onclick: illustrate }, 'Ilustrar escena');
+  const form = h('form', { class: 'composer', onsubmit: submit }, input, h('div', { class: 'composer-actions' }, sendButton, tools));
   return { log, form, input, requestReply };
 }
 
@@ -230,16 +262,45 @@ function readEpisodeForm(form) {
     name: box.querySelector('[name=characterName]').value,
     personality: box.querySelector('[name=characterPersonality]').value,
   }));
-  return { ...Object.fromEntries(['title', 'tone', 'synopsis', 'setting', 'role', 'opening', 'goal'].map((key) => [key, data.get(key)])), characters };
+  const fields = ['title', 'tone', 'synopsis', 'setting', 'role', 'opening', 'goal'].map((key) => [key, data.get(key) ?? '']);
+  return { ...Object.fromEntries(fields), characters };
+}
+
+function takeDraft() {
+  const draft = pendingDraft;
+  pendingDraft = null;
+  return draft;
+}
+
+function castPicker(episodes, addCharacter) {
+  const known = episodes.flatMap((episode) =>
+    episode.characters.map((character) => ({ character, from: episode.title })),
+  );
+  if (known.length === 0) return null;
+  const picker = h(
+    'select',
+    { 'aria-label': 'Añadir un personaje del elenco' },
+    h('option', { value: '' }, 'Añadir del elenco…'),
+    known.map(({ character, from }, index) => h('option', { value: String(index) }, `${character.name} — ${from}`)),
+  );
+  picker.addEventListener('change', () => {
+    const chosen = known[Number(picker.value)];
+    const isChoice = picker.value !== '';
+    picker.value = '';
+    if (isChoice && chosen) addCharacter({ name: chosen.character.name, personality: chosen.character.personality });
+  });
+  return picker;
 }
 
 async function renderEditor(episodeId) {
-  const episode = episodeId ? await data.getEpisode(episodeId) : { characters: [{}] };
+  const [stored, episodes] = await Promise.all([episodeId ? data.getEpisode(episodeId) : null, data.listEpisodes()]);
+  const episode = stored ?? takeDraft() ?? { characters: [{}] };
   const cast = h('div', { class: 'list' }, episode.characters.map(characterFields));
-  const addCharacter = () => {
+  const addCharacter = (character) => {
     if (cast.children.length >= MAX_CHARACTERS) return notify(`Máximo ${MAX_CHARACTERS} personajes.`, true);
-    cast.append(characterFields());
+    cast.append(characterFields(character));
   };
+  const others = episodes.filter((candidate) => candidate.id !== episodeId);
   const input = (name, max, required = true) =>
     h('input', { name, maxlength: max, required, value: episode[name] ?? '' });
   const area = (name, max, required = true) =>
@@ -247,16 +308,17 @@ async function renderEditor(episodeId) {
   const save = (event) => {
     event.preventDefault();
     guarded(async () => {
-      await data.saveEpisode(episodeId ?? null, readEpisodeForm(event.target));
+      await data.saveEpisode(episodeId ?? null, { ...readEpisodeForm(event.target), cover: cover.value() });
       notify('Episodio guardado.');
       location.hash = '#/';
     });
   };
-  view.replaceChildren(
-    ...pageHead(episodeId ? 'Editar episodio' : 'Crear episodio', 'Describe el mundo, el papel del jugador y quién le espera en escena.'),
-    h(
-      'form',
-      { onsubmit: save },
+  const form = h('form', { onsubmit: save });
+  const cover = coverEditor(episode, () => readEpisodeForm(form), {
+    generate: picturesOn(),
+    onError: (err) => notify(err.message, true),
+  });
+  form.append(
       field('Título', input('title', 80)),
       field('Tono (opcional)', input('tone', 60, false)),
       field('Sinopsis', area('synopsis', 400)),
@@ -264,9 +326,66 @@ async function renderEditor(episodeId) {
       field('Papel del protagonista', area('role', 400)),
       field('Escena inicial (lo primero que lee el jugador)', area('opening', 4000)),
       field('Meta de la historia (opcional)', area('goal', 400, false)),
+      cover.node,
       cast,
-      h('div', { class: 'actions' }, h('button', { type: 'button', onclick: addCharacter }, 'Añadir personaje'), h('button', { class: 'primary', type: 'submit' }, 'Guardar episodio')),
-    ),
+      h(
+        'div',
+        { class: 'actions' },
+        h('button', { type: 'button', onclick: () => addCharacter() }, 'Añadir personaje'),
+        castPicker(others, addCharacter) ?? '',
+        h('button', { class: 'primary', type: 'submit' }, 'Guardar episodio'),
+      ),
+  );
+  view.replaceChildren(
+    ...pageHead(episodeId ? 'Editar episodio' : 'Crear episodio', 'Describe el mundo, el papel del jugador y quién le espera en escena.'),
+    form,
+  );
+}
+
+async function renderCrossover() {
+  const episodes = await data.listEpisodes();
+  if (episodes.length < 2) {
+    view.replaceChildren(h('p', { class: 'empty' }, 'Hacen falta al menos dos episodios para cruzar mundos.'));
+    return;
+  }
+  const choice = (label, selected) => {
+    const select = h('select', {}, episodes.map((episode) => h('option', { value: episode.id }, episode.title)));
+    select.value = episodes[selected].id;
+    return { select, node: field(label, select) };
+  };
+  const first = choice('Primer mundo', 0);
+  const second = choice('Segundo mundo', 1);
+  const progress = h('p', { class: 'hint', 'aria-live': 'polite' });
+  const button = h('button', { class: 'primary', type: 'submit' }, 'Escribir el cruce');
+  const submit = (event) => {
+    event.preventDefault();
+    const [a, b] = [first.select.value, second.select.value];
+    if (a === b) return notify('Elige dos episodios distintos.', true);
+    guarded(async () => {
+      button.disabled = true;
+      let length = 0;
+      progress.textContent = 'La IA está escribiendo el cruce…';
+      try {
+        activeStream = new AbortController();
+        const onToken = (piece) => {
+          length += piece.length;
+          progress.textContent = `La IA está escribiendo el cruce… ${length} caracteres.`;
+        };
+        const reply = await data.crossover(a, b, onToken, activeStream.signal);
+        pendingDraft = parseCrossoverDraft(reply.text);
+        notify('Borrador listo. Revísalo y guárdalo.');
+        location.hash = '#/crear';
+      } catch (err) {
+        progress.textContent = '';
+        if (err.name !== 'AbortError') throw err;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  };
+  view.replaceChildren(
+    ...pageHead('Cruzar dos mundos', 'Elige dos episodios y la IA redacta uno nuevo donde se encuentran. Podrás editarlo antes de guardarlo.'),
+    h('form', { onsubmit: submit }, first.node, second.node, progress, h('div', { class: 'actions' }, button)),
   );
 }
 
@@ -391,12 +510,35 @@ function webEngineSection(settings) {
   return engineForm(fields, status, onSave, check);
 }
 
+function picturesSection() {
+  const toggle = h('input', { type: 'checkbox' });
+  toggle.checked = picturesOn();
+  toggle.addEventListener('change', () =>
+    guarded(async () => {
+      setImagesEnabled(toggle.checked);
+      notify(toggle.checked ? 'Ilustraciones activadas.' : 'Ilustraciones desactivadas.');
+    }),
+  );
+  return h(
+    'section',
+    { class: 'section' },
+    h('h2', {}, 'Ilustraciones'),
+    h('label', { class: 'check' }, toggle, 'Generar portadas y escenas automáticamente'),
+    h(
+      'p',
+      { class: 'hint' },
+      'Las dibuja el servicio gratuito Pollinations: tu navegador le envía la descripción del episodio o de la escena. Dibuja una imagen nueva cada 45 segundos, así que varias seguidas se ponen en cola. Las portadas que subas tú no salen de este navegador.',
+    ),
+  );
+}
+
 async function renderSettings() {
   const [profile, settings] = await Promise.all([data.getProfile(), data.getSettings()]);
   view.replaceChildren(
     ...pageHead('Ajustes', 'Quién eres en las historias y qué motor las escribe.'),
     profileSection(profile),
     data.mode === 'web' ? webEngineSection(settings) : localEngineSection(settings),
+    picturesSection(),
   );
 }
 
@@ -405,6 +547,7 @@ const ROUTES = [
   [/^#\/jugar\/([\w-]+)$/, 'sessions', renderPlay],
   [/^#\/crear(?:\/([\w-]+))?$/, 'editor', renderEditor],
   [/^#\/ajustes$/, 'settings', renderSettings],
+  [/^#\/cruce$/, 'library', renderCrossover],
   [/^(?:#\/?)?$/, 'library', renderLibrary],
 ];
 

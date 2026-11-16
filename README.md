@@ -9,7 +9,10 @@ Es una app original del ecosistema ARKAIOS: código, nombre, diseño y episodios
 - **Biblioteca** con tres episodios de muestra (misterio, ciencia ficción, fantasía).
 - **Partidas** de episodio con narrador y personajes, guardadas en disco para continuarlas.
 - **Charlas 1:1** con cualquier personaje, fuera de la historia.
-- **Editor** para crear, editar y borrar episodios propios (hasta 6 personajes).
+- **Editor** para crear, editar y borrar episodios propios (hasta 6 personajes), con **elenco reutilizable**: cualquier personaje de otro episodio se puede añadir al nuevo.
+- **Portadas**: ilustraciones propias en los episodios de muestra; en los tuyos, una portada generada, una imagen que subas o una creada en Perchance.
+- **Ilustrar escena**: un botón en la partida dibuja el momento actual.
+- **Cruzar dos mundos**: la IA redacta un episodio nuevo que mezcla dos existentes; lo revisas antes de guardarlo.
 - **Perfil** de protagonista: nombre y descripción que el narrador tiene en cuenta.
 - **Motor intercambiable**: Ollama local o un proveedor compatible con OpenAI.
 
@@ -58,6 +61,15 @@ Dos formas de desplegarla:
 - **Vercel**: `vercel.json` declara `server.js` como servicio Node; el build (`npm run build`) copia los módulos compartidos a `public/shared`. Basta importar el repositorio o ejecutar `vercel --prod`. En vivo: <https://arkaios-telon.vercel.app>
 - **Render**: `render.yaml` crea un servicio web gratuito (New → Blueprint → este repositorio). En ese plan el servicio se duerme tras un rato sin visitas y la primera carga tarda cerca de un minuto.
 
+## Ilustraciones
+
+Las portadas automáticas y las escenas las dibuja el servicio gratuito [Pollinations](https://pollinations.ai), sin clave. El navegador le envía la descripción del episodio o de la escena, así que en modo local vienen **desactivadas** y en la versión web activadas; se cambia en **Ajustes → Ilustraciones**.
+
+- Pollinations dibuja una imagen nueva cada 45 segundos por conexión. Telón las pone en cola y reintenta solo; las ya dibujadas cargan al instante.
+- Para saber si una imagen es real o el aviso de «servicio ocupado», Telón comprueba que haya quedado en la caché del navegador. Con la caché desactivada las imágenes generadas no aparecen.
+- «Crearla en Perchance» abre `perchance.org/arkaios` con la descripción escrita; la imagen se genera y descarga allí, y luego se sube como portada. Telón nunca automatiza Perchance.
+- Las portadas subidas se reducen a 768×432 y se guardan con el episodio (en el navegador en la versión web, en `data/` en local).
+
 ## Usarla desde el teléfono
 
 En `.env`:
@@ -103,6 +115,8 @@ src/engines.js   clientes de Ollama y de API compatible con OpenAI
 src/prompt.js    instrucciones para el narrador y los personajes
 src/store.js     almacén en archivos JSON
 src/validate.js  validación de entradas
+src/art.js       portadas y direcciones de imagen
+src/crossover.js encargo y borrador del cruce de mundos
 src/seed.js      episodios de muestra y valores por defecto
 public/          interfaz web (HTML, CSS y JS sin dependencias)
 test/            pruebas con node:test
@@ -110,6 +124,6 @@ test/            pruebas con node:test
 
 ## Límites conocidos
 
-- Solo texto: no genera imágenes ni vídeo.
+- Las imágenes dependen de un servicio gratuito externo, que puede fallar o cambiar sus límites. No genera vídeo.
 - Un solo usuario; no hay cuentas, feed ni clasificaciones.
 - El narrador recuerda los últimos 16 mensajes de cada partida.

@@ -1,3 +1,5 @@
+import { isValidCover } from './art.js';
+
 export const LIMITS = Object.freeze({
   title: 80,
   name: 60,
@@ -35,6 +37,12 @@ function text(value, field, max, { required = true } = {}) {
   return trimmed;
 }
 
+function parseCover(value) {
+  const cover = value ?? '';
+  if (!isValidCover(cover)) throw new ValidationError('La portada no es una imagen válida o pesa demasiado.');
+  return cover;
+}
+
 function parseCharacter(input, index) {
   const raw = requireRecord(input, `El personaje ${index + 1}`);
   const label = `personaje ${index + 1}`;
@@ -61,6 +69,7 @@ export function parseEpisode(input) {
     opening: text(raw.opening, 'escena inicial', LIMITS.long),
     goal: text(raw.goal, 'meta', LIMITS.short, { required: false }),
     tone: text(raw.tone, 'tono', LIMITS.name, { required: false }),
+    cover: parseCover(raw.cover),
     characters: raw.characters.map(parseCharacter),
   };
 }

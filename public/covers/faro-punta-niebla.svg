@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 432" role="img" aria-label="Un faro sobre un acantilado entre la niebla">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d1820"/>
+      <stop offset="0.6" stop-color="#24404a"/>
+      <stop offset="1" stop-color="#5c7a7c"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff3c9"/>
+      <stop offset="1" stop-color="#ffd76a" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+  </defs>
+  <rect width="768" height="432" fill="url(#sky)"/>
+  <circle cx="610" cy="78" r="30" fill="#d9e4dc" opacity="0.35"/>
+  <polygon points="262,150 768,70 768,206" fill="url(#beam)" opacity="0.55"/>
+  <polygon points="250,150 0,96 0,190" fill="url(#beam)" opacity="0.18" transform="matrix(-1 0 0 1 500 0)"/>
+  <path d="M0 330 L120 300 L200 262 L300 250 L352 290 L400 340 L430 432 L0 432 Z" fill="#0b1114"/>
+  <path d="M232 250 L242 168 L270 168 L280 250 Z" fill="#e8e2d2"/>
+  <path d="M236 216 L276 216 L278 234 L234 234 Z" fill="#b5443a"/>
+  <rect x="238" y="140" width="36" height="28" rx="3" fill="#1a2327"/>
+  <rect x="244" y="145" width="24" height="18" fill="#ffe9a8"/>
+  <path d="M234 140 L256 120 L278 140 Z" fill="#b5443a"/>
+  <circle cx="256" cy="154" r="46" fill="url(#glow)" opacity="0.8"/>
+  <rect x="286" y="236" width="38" height="16" fill="#1a2327"/>
+  <rect x="296" y="241" width="7" height="7" fill="#e0a045"/>
+  <g filter="url(#soft)" fill="#c9d6d2">
+    <ellipse cx="560" cy="318" rx="330" ry="36" opacity="0.5"/>
+    <ellipse cx="170" cy="372" rx="300" ry="34" opacity="0.4"/>
+    <ellipse cx="640" cy="236" rx="220" ry="22" opacity="0.28"/>
+  </g>
+  <path d="M400 352 Q470 340 540 352 T680 352 T768 350 L768 432 L400 432 Z" fill="#12242b" opacity="0.9"/>
+  <path d="M430 384 Q500 374 570 384 T710 384" stroke="#7fa3a4" stroke-width="2" fill="none" opacity="0.5"/>
+</svg>

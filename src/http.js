@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { IMAGE_ORIGIN } from './art.js';
 import { StoreError } from './store.js';
 import { ValidationError } from './validate.js';
 
@@ -7,16 +8,24 @@ const MAX_BODY_BYTES = 256 * 1024;
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 const SAFE_METHODS = new Set(['GET', 'HEAD']);
 const CONTENT_SECURITY_POLICY =
-  "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+  `default-src 'self'; img-src 'self' data: blob: ${IMAGE_ORIGIN}; connect-src 'self' ${IMAGE_ORIGIN}; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
 const SCRIPT = 'text/javascript; charset=utf-8';
+const SVG = 'image/svg+xml';
 const STATIC_FILES = Object.freeze({
   '/': ['public', 'index.html', 'text/html; charset=utf-8'],
   '/app.js': ['public', 'app.js', SCRIPT],
   '/data.js': ['public', 'data.js', SCRIPT],
+  '/dom.js': ['public', 'dom.js', SCRIPT],
+  '/pictures.js': ['public', 'pictures.js', SCRIPT],
   '/styles.css': ['public', 'styles.css', 'text/css; charset=utf-8'],
   '/shared/validate.js': ['shared', 'validate.js', SCRIPT],
   '/shared/prompt.js': ['shared', 'prompt.js', SCRIPT],
   '/shared/session.js': ['shared', 'session.js', SCRIPT],
+  '/shared/art.js': ['shared', 'art.js', SCRIPT],
+  '/shared/crossover.js': ['shared', 'crossover.js', SCRIPT],
+  '/covers/faro-punta-niebla.svg': ['public', 'covers/faro-punta-niebla.svg', SVG],
+  '/covers/estacion-kepler-9.svg': ['public', 'covers/estacion-kepler-9.svg', SVG],
+  '/covers/mercado-mil-lamparas.svg': ['public', 'covers/mercado-mil-lamparas.svg', SVG],
 });
 
 export class HttpError extends Error {

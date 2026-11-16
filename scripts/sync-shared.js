@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SHARED_MODULES = ['validate.js', 'prompt.js', 'session.js'];
+const SHARED_MODULES = ['validate.js', 'prompt.js', 'session.js', 'art.js', 'crossover.js'];
 const target = path.join(ROOT, 'public', 'shared');
 
 await mkdir(target, { recursive: true });

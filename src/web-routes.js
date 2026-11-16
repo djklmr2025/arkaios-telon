@@ -1,7 +1,8 @@
+import { buildCrossoverMessages } from './crossover.js';
 import { HttpError } from './http.js';
 import { buildMessages } from './prompt.js';
 import { streamChat } from './stream.js';
-import { parseModelName, parseReplyRequest } from './validate.js';
+import { parseEpisode, parseModelName, parseReplyRequest } from './validate.js';
 
 const WEB = 'web';
 const ANY = 'any';
@@ -59,8 +60,20 @@ async function reply(ctx) {
   await streamChat(ctx, engineOf(ctx, provider, model), buildMessages(session, profile));
 }
 
+async function crossover(ctx) {
+  const body = await ctx.readBody();
+  const provider = findProvider(body.provider);
+  if (!Array.isArray(body.episodes) || body.episodes.length !== 2) {
+    throw new HttpError(400, 'Elige dos episodios para cruzar.');
+  }
+  const [first, second] = body.episodes.map(parseEpisode);
+  const engine = engineOf(ctx, provider, parseModelName(body.model));
+  await streamChat(ctx, engine, buildCrossoverMessages(first, second));
+}
+
 export const WEB_ROUTES = Object.freeze([
   [ANY, 'GET', /^\/api\/config$/, getConfig],
   [WEB, 'POST', /^\/api\/engine\/check$/, checkEngine],
   [WEB, 'POST', /^\/api\/reply$/, reply],
+  [WEB, 'POST', /^\/api\/crossover$/, crossover],
 ]);

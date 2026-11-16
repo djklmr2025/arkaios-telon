@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { API_KEY_ENV } from './engines.js';
+import { buildCrossoverMessages } from './crossover.js';
 import { HttpError } from './http.js';
 import { buildMessages } from './prompt.js';
 import { buildSession, byRecent, isAwaitingReply, newMessage, summarize, withMessage } from './session.js';
@@ -158,6 +159,18 @@ async function postMessage(ctx) {
   return HANDLED;
 }
 
+async function postCrossover(ctx) {
+  const { store } = ctx;
+  const { episodeIds } = await ctx.readBody();
+  if (!Array.isArray(episodeIds) || episodeIds.length !== 2) {
+    throw new HttpError(400, 'Elige dos episodios para cruzar.');
+  }
+  const [first, second] = await Promise.all(episodeIds.map((id) => findEpisode(store, id)));
+  const settings = await store.read('settings');
+  await streamChat(ctx, ctx.engineFor(settings), buildCrossoverMessages(first, second));
+  return HANDLED;
+}
+
 const ID = '(?<id>[\\w-]{1,64})';
 
 export const ROUTES = Object.freeze([
@@ -176,5 +189,6 @@ export const ROUTES = Object.freeze([
   [LOCAL, 'GET', new RegExp(`^/api/sessions/${ID}$`), getSession],
   [LOCAL, 'DELETE', new RegExp(`^/api/sessions/${ID}$`), deleteSession],
   [LOCAL, 'POST', new RegExp(`^/api/sessions/${ID}/messages$`), postMessage],
+  [LOCAL, 'POST', /^\/api\/crossover$/, postCrossover],
   ...WEB_ROUTES.map((route) => [...route.slice(0, -1), async (ctx) => (await route.at(-1)(ctx)) ?? HANDLED]),
 ]);

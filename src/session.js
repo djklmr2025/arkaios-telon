@@ -13,8 +13,9 @@ export function newMessage(role, text) {
   return { id: crypto.randomUUID(), role, text, at: now() };
 }
 
-export function buildSession(episode, mode, characterId) {
+export function buildSession(source, mode, characterId) {
   if (!SESSION_MODES.includes(mode)) throw new ValidationError('Modo de partida desconocido.');
+  const episode = { ...source, cover: '' };
   const stamp = now();
   const base = { id: crypto.randomUUID(), mode, episode, createdAt: stamp, updatedAt: stamp };
   if (mode === 'episode') {
